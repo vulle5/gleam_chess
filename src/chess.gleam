@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/list
 import gleam/string
 
 pub type Color {
@@ -23,8 +24,13 @@ pub type Piece {
   Piece(color: Color, kind: Kind, position: Position)
 }
 
+// TODO: Needs history for en passant, castling, repetition, etc.
 pub type GameState {
   GameState(pieces: List(Piece), turn: Color)
+}
+
+pub type PositionError {
+  NoPieceAtPosition
 }
 
 pub fn board_position(rank: String, file: Int) -> Position {
@@ -37,6 +43,24 @@ pub fn board_position(rank: String, file: Int) -> Position {
     _ -> 1
   }
   Position(unique_rank, unique_file)
+}
+
+// Utility to get the piece at a given position
+pub fn get_piece_at_position(
+  state: GameState,
+  position: Position,
+) -> Result(Piece, Nil) {
+  list.find(state.pieces, fn(piece) {
+    piece.position == position && piece.color == state.turn
+  })
+}
+
+// Utility to check if a position is empty
+pub fn is_position_empty(state: GameState, position: Position) -> Bool {
+  case get_piece_at_position(state, position) {
+    Ok(_) -> False
+    Error(Nil) -> True
+  }
 }
 
 pub fn initialize_game() -> GameState {
@@ -74,10 +98,49 @@ pub fn initialize_game() -> GameState {
     Piece(Black, Pawn, board_position("g", 7)),
     Piece(Black, Pawn, board_position("h", 7)),
   ]
-  GameState(pieces, White)
+  GameState(pieces, turn: White)
+}
+
+// TODO: Implement
+pub fn game_over(state: GameState) -> Bool {
+  False
+}
+
+pub fn move_piece(state: GameState, from: Position, to: Position) -> GameState {
+  // Check if there is a piece at the from position
+  case get_piece_at_position(state, from) {
+    Ok(piece) -> {
+      // TODO: Check if the piece can move to the to position
+      // Move the piece
+      let new_pieces =
+        list.map(state.pieces, fn(p) {
+          case p.position == from {
+            True -> Piece(piece.color, piece.kind, to)
+            False -> p
+          }
+        })
+      GameState(new_pieces, state.turn)
+    }
+    // What to do if there is no piece at the from position
+    Error(Nil) -> state
+  }
+}
+
+pub fn play_game(state: GameState) -> GameState {
+  // Main game loop
+  case game_over(state) {
+    // Checkmate, stalemate, repetition, etc.
+    True -> state
+    False -> {
+      // TODO: input a move
+      move_piece(state, board_position("e", 2), board_position("e", 4))
+      // TODO: switch turn
+    }
+  }
 }
 
 pub fn main() {
-  let state = initialize_game()
-  io.debug(state)
+  initialize_game()
+  |> play_game
+  |> io.debug
 }
